@@ -13,6 +13,10 @@ from . import estimate_utils
 
 
 def estimate_dos(A, pflag=False, npts=1001):
+    """ Estimate the density of states of the matrix A
+
+    A should be a matrix of with eigenvalues in tha range [-1, 1].
+    """
     c = estimate_utils.moments_cheb_dos(A, A.shape[0], N=50)[0]
     return estimate_utils.plot_chebint((c,), pflag=pflag, npts=npts)
 
@@ -100,7 +104,6 @@ def adjacency_to_operator(A, anisotropy):
     return M, D_norm
 
 
-
 def randomized_interpolative_decomposition(
     A, k_1, k_2, k_3=5, tol=1e-6, return_p=False
 ):
@@ -153,9 +156,6 @@ def randomized_interpolative_decomposition(
     return indices
 
 
-from graphtools.estimator import GraphEstimator, attribute
-
-
 class DiffusionEMD(object):
     """ Base class for DiffusionEMD estimators
     """
@@ -181,7 +181,9 @@ class DiffusionEMD(object):
         if max_basis is None:
             max_basis = np.inf
         self.max_basis = max_basis
-        self.scales = [2 ** i for i in range(max_scale - self.n_scales + 1, max_scale + 1)]
+        self.scales = [
+            2 ** i for i in range(max_scale - self.n_scales + 1, max_scale + 1)
+        ]
         assert 0 <= self.anisotropy <= 1
 
     def transform(self, y):
@@ -216,7 +218,7 @@ class DiffusionTree(DiffusionEMD):
         min_basis=0,
         max_basis=None,
     ):
-        n_scales = max_scale+1
+        n_scales = max_scale + 1
         super().__init__(
             max_scale=max_scale,
             n_scales=n_scales,
@@ -226,6 +228,7 @@ class DiffusionTree(DiffusionEMD):
             min_basis=min_basis,
             max_basis=max_basis,
         )
+
     def fit(self, X):
         super().fit(X)
         self.T = apply_vectors(self.M, self.D ** -0.5)
@@ -326,7 +329,6 @@ class DiffusionCheb(DiffusionEMD):
 
         kernels = [lambda x, s=s: np.minimum((1 - x) ** s, 1) for s in self.scales]
         self.filter = pygsp.filters.Filter(graph, kernels)
-
 
     def _subsample_embeddings(self, embeddings):
         # TODO make this work on a concatenated set of embeddings

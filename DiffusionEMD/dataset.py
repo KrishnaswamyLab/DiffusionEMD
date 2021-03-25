@@ -122,18 +122,6 @@ class SklearnDataset(Dataset):
         return self.graph
 
 
-class SwissRoll2(Dataset):
-    def __init__(
-        self,
-        n_distributions=100,
-        n_points_per_distribution=50,
-        noise=0.0,
-        random_state=42,
-    ):
-        super().__init__()
-        rng = np.random.default_rng(random_state)
-
-
 class SwissRoll(Dataset):
     def __init__(
         self,

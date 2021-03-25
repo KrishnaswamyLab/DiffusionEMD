@@ -238,9 +238,7 @@ class MetricTree(BaseEstimator):
         y_indices = y[tree_indices]  # reorders point labels by tree order.
 
         self.edge_weights = self.get_node_weights()
-        counts = np.empty(
-            (len(node_data), y.shape[1])
-        )
+        counts = np.empty((len(node_data), y.shape[1]))
         for node_idx in reversed(range(len(node_data))):
             start, end, is_leaf, radius = node_data[node_idx]
 
