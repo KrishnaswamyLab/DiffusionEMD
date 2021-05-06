@@ -373,3 +373,9 @@ class DiffusionCheb(DiffusionEMD):
             self.basis_sizes = [n_samples] * n_scales
         self.embeddings = np.concatenate(embeddings, axis=1)
         return self.embeddings
+
+
+class DiffusionPartition(DiffusionEMD):
+    """ Implements another algorithm for partitioning the space
+
+    """
