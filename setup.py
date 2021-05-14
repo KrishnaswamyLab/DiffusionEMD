@@ -43,7 +43,7 @@ setup(
     version=version,
     description="Diffusion based earth mover's distance.",
     author="Alexander Tong",
-    author_email="alexanderytong@gmail.com",
+    author_email="alexandertongdev@gmail.com",
     license="MIT",
     install_requires=install_requires,
     extras_require={
