@@ -1,4 +1,7 @@
-# Implementation of Diffusion EMD
+Implementation of Diffusion EMD
+===============================
+
+Diffusion Earth Mover's Distance embeds the Wasserstein distance between two distributions on a graph into :math:`L^1` in log-linear time.
 
 Installation
 ------------
