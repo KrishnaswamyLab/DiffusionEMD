@@ -3,3 +3,4 @@ scipy
 matplotlib>=3.0
 pot
 pygsp
+graphtools

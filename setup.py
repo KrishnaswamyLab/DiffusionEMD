@@ -8,6 +8,7 @@ install_requires = [
     "matplotlib>=3.0",
     "pot",
     "pygsp",
+    "graphtools",
 ]
 
 doc_requires = [
