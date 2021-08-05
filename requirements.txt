@@ -2,6 +2,5 @@ numpy>=1.16.0
 scipy
 matplotlib>=3.0
 pot
-sparseqr
 pygsp
-
+graphtools
