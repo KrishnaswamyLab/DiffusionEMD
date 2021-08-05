@@ -6,8 +6,8 @@ corresponds to the Wasserstein distance between distributions.
 import numpy as np
 import pygsp
 from scipy.linalg import qr
+from scipy.linalg.interpolative import interp_dcomp
 import scipy.sparse
-import sparseqr
 
 from . import estimate_utils
 

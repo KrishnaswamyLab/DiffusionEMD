@@ -7,7 +7,6 @@ install_requires = [
     "scipy",
     "matplotlib>=3.0",
     "pot",
-    "sparseqr",
     "pygsp",
 ]
 
@@ -53,4 +52,3 @@ setup(
     long_description=readme,
     url="https://github.com/KrishnaswamyLab/DiffusionEMD",
 )
-
