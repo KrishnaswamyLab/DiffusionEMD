@@ -7,7 +7,8 @@ import numpy as np
 import pygsp
 import scipy
 from scipy.linalg import qr
-#from scipy.linalg.interpolative import interp_decomp
+
+# from scipy.linalg.interpolative import interp_decomp
 import scipy.sparse
 
 from . import estimate_utils
@@ -25,9 +26,9 @@ def estimate_dos(A, pflag=False, npts=1001):
 def approximate_rank(A, thresh):
     """ Determines the rank relative to a threshold as defined in
     https://doi.org/10.1016/j.acha.2012.03.002
-    $R_{\delta}(A) = \| \{ \frac{\sigma_j}{\sigma_0} \ge \delta \}$ Where
-    $\sigma_j$ denotes the $jth$ largest singular value of the matrix K TODO:
-    This function currently assumes symmetricish distribution of eigenvalues.
+    $$R_{\delta}(A) = \| \{ \frac{\sigma_j}{\sigma_0} \ge \delta \}$$
+    Where $\sigma_j$ denotes the $jth$ largest singular value of the matrix K
+    TODO: This function currently assumes symmetricish distribution of eigenvalues.
     """
     eig, density = estimate_dos(A)
     approx_rank = np.maximum(
@@ -35,11 +36,6 @@ def approximate_rank(A, thresh):
     ) + np.maximum(A.shape[0] - np.min(density[np.where(eig >= thresh)]), 0)
 
     return int(np.ceil(approx_rank))
-
-
-def sparse_interpolative_decomposition(A, k, return_p=False):
-    assert k < np.min(A.shape)
-    q, r, perm = sparseqr.qr(A, pivoting=True)
 
 
 def interpolative_decomposition(A, k, return_p=False):
@@ -271,7 +267,9 @@ class DiffusionTree(DiffusionEMD):
             perm = self.perms[i]
             if P is not None:
                 dist_at_scale = (
-                    P @ sparseqr.permutation_vector_to_matrix(perm) @ dist_at_scale
+                    P
+                    @ estimate_utils.permutation_vector_to_matrix(perm)
+                    @ dist_at_scale
                 )
             diffusion_at_scale = T @ dist_at_scale
             if P is not None:

@@ -7,12 +7,9 @@ between any two points embedded in this tree is then the geodesic distance
 along the tree.  Note that this is an offline algorithm, we do not support
 adding points after the initial construction.
 """
-from collections import Counter
-
 import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from sklearn.utils.multiclass import unique_labels
+from sklearn.utils.validation import check_X_y, check_is_fitted
 from sklearn.neighbors import KDTree, BallTree, DistanceMetric
 from sklearn.cluster import MiniBatchKMeans
 from scipy.sparse import coo_matrix
@@ -223,7 +220,8 @@ class MetricTree(BaseEstimator):
     def fit_transform(self, X, y):
         """
         X is data array (np array)
-        y is one-hot encoded distribution index (np array of size # points x # distributions.
+        y is one-hot encoded distribution index (np array of size # points x #
+        distributions.
         """
         X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
         self.classes_ = y.shape[1]  # unique_labels(y)
