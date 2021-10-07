@@ -79,8 +79,10 @@ class Line(Dataset):
         self.random_state = random_state
         np.random.seed(42)
         self.X = np.linspace(0, 1, N)[:, None]
-        # self.X_circle = np.stack([np.cos(2 * np.pi * self.X[:,0]), np.sin(2 * np.pi * self.X[:,0])], axis=1)
-        # print(self.X_circle)
+        # self.X_circle = np.stack(
+        #     [np.cos(2 * np.pi * self.X[:, 0]), np.sin(2 * np.pi * self.X[:, 0])],
+        #     axis=1
+        # )
         self.graph = pygsp.graphs.NNGraph(
             self.X, epsilon=0.1, NNtype="radius", rescale=False, center=False
         )

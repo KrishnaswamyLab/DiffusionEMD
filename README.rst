@@ -45,10 +45,17 @@ This code implements the algorithms described in this paper:
 
 ArXiv Link: http://arxiv.org/abs/2102.12833::
 
-    @inproceedings{tong_diffusion_2021,
-      title = {Diffusion {{Earth Mover}}'s {{Distance}} and {{Distribution Embeddings}}},
-      author = {Tong, Alexander and Huguet, Guillaume and Natik, Amine and MacDonald, Kincaid and Kuchroo, Manik and Coifman, Ronald and Wolf, Guy and Krishnaswamy, Smita},
-      year = {2021},
-      archiveprefix = {arXiv},
-      eprint = {2102.12833},
+    @InProceedings{pmlr-v139-tong21a,
+      title =       {Diffusion Earth Mover’s Distance and Distribution Embeddings},
+      author =      {Tong, Alexander Y and Huguet, Guillaume and Natik, Amine and Macdonald, Kincaid and Kuchroo, Manik and Coifman, Ronald and Wolf, Guy and Krishnaswamy, Smita},
+      booktitle =   {Proceedings of the 38th International Conference on Machine Learning},
+      pages = 	    {10336--10346},
+      year = 	    {2021},
+      editor = 	    {Meila, Marina and Zhang, Tong},
+      volume = 	    {139},
+      series = 	    {Proceedings of Machine Learning Research},
+      month = 	    {18--24 Jul},
+      publisher =   {PMLR},
+      pdf = 	    {http://proceedings.mlr.press/v139/tong21a/tong21a.pdf},
+      url = 	    {http://proceedings.mlr.press/v139/tong21a.html},
     }

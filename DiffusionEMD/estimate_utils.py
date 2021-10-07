@@ -6,36 +6,32 @@ Goal is to estimate the density of eigenvalues over a known range.
 
 import numpy as np
 import scipy.sparse as ss
-import scipy.io as sio
 import numpy.random as nr
 import matplotlib.pyplot as plt
-import graphtools
-import sklearn.datasets
 import pygsp
-import sklearn
 import ot
 
 
 def moments_cheb_dos(A, n, nZ=100, N=10, kind=1):
     """
-	Compute a column vector of Chebyshev moments of the form c(k) = tr(T_k(A)) 
-	for k = 0 to N-1. This routine does no scaling; the spectrum of A should 
-	already lie in [-1,1]. The traces are computed via a stochastic estimator 
-	with nZ probe
+    Compute a column vector of Chebyshev moments of the form c(k) = tr(T_k(A))
+    for k = 0 to N-1. This routine does no scaling; the spectrum of A should
+    already lie in [-1,1]. The traces are computed via a stochastic estimator
+    with nZ probe
 
-	Args:
-		A: Matrix or function apply matrix (to multiple RHS)
-		n: Dimension of the space
-		nZ: Number of probe vectors with which we compute moments
-		N: Number of moments to compute
-		kind: 1 or 2 for first or second kind Chebyshev functions
-		 	(default = 1)
+    Args:
+        A: Matrix or function apply matrix (to multiple RHS)
+        n: Dimension of the space
+        nZ: Number of probe vectors with which we compute moments
+        N: Number of moments to compute
+        kind: 1 or 2 for first or second kind Chebyshev functions
+                (default = 1)
 
-	Output:
-		c: a column vector of N moment estimates
-		cs: standard deviation of the moment estimator 
-			(std/sqrt(nZ))
-	"""
+    Output:
+        c: a column vector of N moment estimates
+        cs: standard deviation of the moment estimator
+                (std/sqrt(nZ))
+    """
 
     # Create a function handle if given a matrix
     if callable(A):
@@ -43,7 +39,9 @@ def moments_cheb_dos(A, n, nZ=100, N=10, kind=1):
     else:
         if isinstance(A, np.ndarray):
             A = ss.csr_matrix(A)
-        Afun = lambda x: A * x
+
+        def Afun(x):
+            return A * x
 
     if N < 2:
         N = 2
@@ -67,20 +65,20 @@ def moments_cheb_dos(A, n, nZ=100, N=10, kind=1):
 
 def moments_cheb(A, V, N=10, kind=1):
     """
-	Compute a column vector of Chebyshev moments of the form c(k) = v'*T_k(A)*v 
-	for k = 0 to N-1. This routine does no scaling; the spectrum of A should 
-	already lie in [-1,1]
+    Compute a column vector of Chebyshev moments of the form c(k) = v'*T_k(A)*v
+    for k = 0 to N-1. This routine does no scaling; the spectrum of A should
+    already lie in [-1,1]
 
-	Args:
-		A: Matrix or function apply matrix (to multiple RHS)
-		V: Starting vectors
-		N: Number of moments to compute
-		kind: 1 or 2 for first or second kind Chebyshev functions
-			(default = 1)
+    Args:
+        A: Matrix or function apply matrix (to multiple RHS)
+        V: Starting vectors
+        N: Number of moments to compute
+        kind: 1 or 2 for first or second kind Chebyshev functions
+                (default = 1)
 
-	Output:
-		c: a length N vector of moments
-	"""
+    Output:
+        c: a length N vector of moments
+    """
 
     if N < 2:
         N = 2
@@ -94,7 +92,9 @@ def moments_cheb(A, V, N=10, kind=1):
     else:
         if isinstance(A, np.ndarray):
             A = ss.csr_matrix(A)
-        Afun = lambda x: A * x
+
+        def Afun(x):
+            return A * x
 
     n, p = V.shape
     c = np.zeros((N, p))
@@ -114,21 +114,21 @@ def moments_cheb(A, V, N=10, kind=1):
 
 def plot_cheb_argparse(npts, c, xx0=-1, ab=np.array([1, 0])):
     """
-	Handle argument parsing for plotting routines. Should not be called directly
-	by users.
+    Handle argument parsing for plotting routines. Should not be called directly
+    by users.
 
-	Args:
-		npts: Number of points in a default mesh
-		c: Vector of moments
-		xx0: Input sampling mesh (original coordinates)
-		ab: Scaling map parameters
+    Args:
+        npts: Number of points in a default mesh
+        c: Vector of moments
+        xx0: Input sampling mesh (original coordinates)
+        ab: Scaling map parameters
 
-	Output:
-		c: Vector of moments
-		xx: Input sampling mesh ([-1,1] coordinates)
-		xx0: Input sampling mesh (original coordinates)
-		ab: Scaling map parameters
-	"""
+    Output:
+        c: Vector of moments
+        xx: Input sampling mesh ([-1,1] coordinates)
+        xx0: Input sampling mesh (original coordinates)
+        ab: Scaling map parameters
+    """
 
     if isinstance(xx0, int):
         # only c is given
@@ -153,20 +153,20 @@ def plot_cheb_argparse(npts, c, xx0=-1, ab=np.array([1, 0])):
 
 def plot_chebint(varargin, npts=1001, pflag=True):
     """
-	Given a (filtered) set of first-kind Chebyshev moments, compute the integral
-	of the density:
-		int_0^s (2/pi)*sqrt(1-x^2)*( c(0)/2+sum_{n=1}^{N-1}c_nT_n(x) )
-	Output a plot of cumulative density function by default.
+    Given a (filtered) set of first-kind Chebyshev moments, compute the integral
+    of the density:
+            int_0^s (2/pi)*sqrt(1-x^2)*( c(0)/2+sum_{n=1}^{N-1}c_nT_n(x) )
+    Output a plot of cumulative density function by default.
 
-	Args:
-		c: Array of Chebyshev moments (on [-1,1])
-		xx: Evaluation points (defaults to mesh of 1001 pts)
-		ab: Mapping parameters (default to identity)
-		pflag: Option to output the plot
+    Args:
+        c: Array of Chebyshev moments (on [-1,1])
+        xx: Evaluation points (defaults to mesh of 1001 pts)
+        ab: Mapping parameters (default to identity)
+        pflag: Option to output the plot
 
-	Output:
-		yy: Estimated cumulative density up to each xx point
-	"""
+    Output:
+        yy: Estimated cumulative density up to each xx point
+    """
 
     # Parse arguments
     c, xx, xx0, ab = plot_cheb_argparse(npts, *varargin)
@@ -192,20 +192,20 @@ def plot_chebint(varargin, npts=1001, pflag=True):
 
 def plot_chebhist(varargin, pflag=True, npts=21):
     """
-	Given a (filtered) set of first-kind Chebyshev moments, compute the integral
-	of the density:
-		int_0^s (2/pi)*sqrt(1-x^2)*( c(0)/2+sum_{n=1}^{N-1}c_nT_n(x) )
-	Output a histogram of cumulative density function by default.
+    Given a (filtered) set of first-kind Chebyshev moments, compute the integral
+    of the density:
+        int_0^s (2/pi)*sqrt(1-x^2)*( c(0)/2+sum_{n=1}^{N-1}c_nT_n(x) )
+    Output a histogram of cumulative density function by default.
 
-	Args:
-		c: Vector of Chebyshev moments (on [-1,1])
-		xx: Evaluation points (defaults to mesh of 21 pts)
-		ab: Mapping parameters (default to identity)
-		pflag: Option to output the plot
+    Args:
+        c: Vector of Chebyshev moments (on [-1,1])
+        xx: Evaluation points (defaults to mesh of 21 pts)
+        ab: Mapping parameters (default to identity)
+        pflag: Option to output the plot
 
-	Output:
-		yy: Estimated counts on buckets between xx points
-	"""
+    Output:
+        yy: Estimated counts on buckets between xx points
+    """
 
     # Parse arguments
     c, xx, xx0, ab = plot_cheb_argparse(npts, *varargin)
@@ -228,18 +228,18 @@ def plot_chebhist(varargin, pflag=True, npts=21):
 
 def matrix_normalize(W, mode="s"):
     """
-	Normalize an adjacency matrix.
+    Normalize an adjacency matrix.
 
-	Args:
-		W: weighted adjacency matrix
-		mode: string indicating the style of normalization;
-			's': Symmetric scaling by the degree (default)
-			'r': Normalize to row-stochastic
-			'c': Normalize to col-stochastic
+    Args:
+        W: weighted adjacency matrix
+        mode: string indicating the style of normalization;
+            's': Symmetric scaling by the degree (default)
+            'r': Normalize to row-stochastic
+            'c': Normalize to col-stochastic
 
-	Output:
-		N: a normalized adjacency matrix or stochastic matrix (in sparse form)
-	"""
+    Output:
+        N: a normalized adjacency matrix or stochastic matrix (in sparse form)
+    """
 
     dc = np.asarray(W.sum(0)).squeeze()
     dr = np.asarray(W.sum(1)).squeeze()
@@ -260,11 +260,11 @@ def matrix_normalize(W, mode="s"):
 
 
 def simple_diffusion_embeddings(graph, distribution_labels, subsample=False, scales=7):
-    """
-    The plain version, without any frills.
+    """ The plain version, without any frills.
     Return the vectors whose L1 distances are the EMD between the given distributions.
     The graph supplied (a PyGSP graph) should encompass both distributions.
-    The distributions themselves should be one-hot encoded with the distribution_labels parameter.
+    The distributions themselves should be one-hot encoded with the
+    distribution_labels parameter.
     """
     heat_filter = pygsp.filters.Heat(
         graph, tau=[2 ** i for i in range(1, scales + 1)], normalize=False
@@ -317,3 +317,13 @@ def exact_ot(signals, dists):
             D[i][j] = ot.emd2(sig1, sig2, dists, processes=-2)
             D[j][i] = D[i][j]
     return D
+
+
+def permutation_vector_to_matrix(E):
+    """Convert a permutation vector E (list or rank-1 array, length n) to a
+    permutation matrix (n by n).  The result is returned as a
+    scipy.sparse.coo_matrix, where the entries at (E[k], k) are 1.
+    """
+    n = len(E)
+    j = np.arange(n)
+    return ss.coo_matrix((np.ones(n), (E, j)), shape=(n, n))
