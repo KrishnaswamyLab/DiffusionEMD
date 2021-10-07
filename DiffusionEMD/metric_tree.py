@@ -207,9 +207,24 @@ class MetricTree(BaseEstimator):
         """
         node_weights = self.tree.get_arrays()[-1]
         if self.tree_type == "ball":
-            return node_weights[0]
+            centers = node_weights[0]
+            n = centers.shape[0]
+            # Subtracts the child from the parent relying on the order of nodes in the tree
+            lengths = np.linalg.norm(
+                centers[np.insert(np.arange(n - 1) // 2, 0, 0)] - centers[np.arange(n)],
+                axis=1,
+            )
+            return lengths
         elif self.tree_type == "kd":
-            return node_weights.mean(axis=0)
+            # Averages the two boundaries of the KD box
+            centers = node_weights.mean(axis=0)
+            n = centers.shape[0]
+            # Subtracts the child from the parent relying on the order of nodes in the tree
+            lengths = np.linalg.norm(
+                centers[np.insert(np.arange(n - 1) // 2, 0, 0)] - centers[np.arange(n)],
+                axis=1,
+            )
+            return lengths
         elif self.tree_type == "cluster":
             return node_weights
         elif self.tree_type == "quad":
@@ -230,7 +245,6 @@ class MetricTree(BaseEstimator):
         self.tree = self.tree_cls(
             X, leaf_size=self.leaf_size, metric=self.metric, **self.kwargs
         )
-
         tree_indices = self.tree.get_arrays()[1]
         node_data = self.tree.get_arrays()[2]
         y_indices = y[tree_indices]  # reorders point labels by tree order.
@@ -240,27 +254,15 @@ class MetricTree(BaseEstimator):
         for node_idx in reversed(range(len(node_data))):
             start, end, is_leaf, radius = node_data[node_idx]
 
-            # # Get counts represented in a sparse way through counters
-            # counts[node_idx] = Counter(y_indices[start:end])
-
             # Find the number of points present in this range from each distribution
             counts[node_idx] = np.sum(
                 y_indices[start:end], axis=0
             )  # as y is a one-hot encoding, we just need to sum over the relevant bits.
 
-            # if is_leaf:
-            #    counts[node_idx] = Counter(y_indices[start:end])
-            # else:
-            #    counts[node_idx] = counts[node_idx * 2 + 1] + counts[node_idx * 2 + 2]
-
-            # Get edge weight
-            """
-            if node_idx > 0:
-                edge_weights[node_idx] = self.dist_fn.pairwise(
-                    [self.node_centers[node_idx]],
-                    [self.node_centers[(node_idx - 1) // 2]],
-                )
-            """
+        if np.issubdtype(y.dtype, np.floating):
+            # if is floating then don't worry about the logic below
+            self.counts_mtx = coo_matrix(counts).T
+            return self.counts_mtx, self.edge_weights
 
         # convert to COO format
         dim = (self.classes_, len(node_data))
