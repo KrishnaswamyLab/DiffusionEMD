@@ -59,12 +59,15 @@ def approximate_rank_of_scales(A, thresh, scales):
     eig, density = estimate_dos(A)
     ranks = []
     for scale in scales:
-        approx_rank = np.maximum(
-            np.max(density[np.where(-eig >= (thresh ** (1 / scale)))]), 0
-        ) + np.maximum(
-            A.shape[0] - np.min(density[np.where(eig >= (thresh ** (1 / scale)))]), 0
-        )
-        approx_rank = int(np.ceil(approx_rank))
+        if scale == 0:
+            approx_rank = A.shape[0]
+        else:
+            approx_rank = np.maximum(
+                np.max(density[np.where(-eig >= (thresh ** (1 / scale)))]), 0
+            ) + np.maximum(
+                A.shape[0] - np.min(density[np.where(eig >= (thresh ** (1 / scale)))]), 0
+            )
+            approx_rank = int(np.ceil(approx_rank))
         ranks.append(approx_rank)
     return ranks
 
@@ -93,6 +96,21 @@ def apply_vectors(M, d, d_post=None):
         M.data = M.data * (d[M.row] * d_post[M.col])
         return M.tocsr()
     return M / np.outer(d, d_post)
+
+def apply_left(M, d):
+    if scipy.sparse.issparse(M):
+        M = M.tocoo()
+        M.data = M.data * (d[M.row])
+        return M.tocsr()
+    else:
+        M 
+
+def apply_right(M, d):
+    if scipy.sparse.issparse(M):
+        M = M.tocoo()
+        M.data = M.data * (d[M.col])
+        return M.tocsr()
+
 
 
 def adjacency_to_operator(A, anisotropy):
@@ -150,7 +168,9 @@ def randomized_interpolative_decomposition(
                 np.linalg.norm(S[:, :, None] - W[:, None, :], axis=0) < tol
             )[:, 1]
             break
-    assert len(indices) == k_1
+        print(count)
+    if len(indices) != k_1:
+        raise ValueError("Len indices not equal to k_1: %d != %d" % (len(indices), k_1))
     if return_p:
         return indices, P, perm
     return indices
@@ -206,12 +226,11 @@ class DiffusionEMD(object):
         self.fit(X, **kwargs)
         return self.transform(y)
 
-
 class DiffusionTree(DiffusionEMD):
     def __init__(
         self,
         max_scale=10,
-        n_scales=6,
+        n_scales=1000,
         delta=0,
         anisotropy=1,
         alpha=0.5,
@@ -245,9 +264,7 @@ class DiffusionTree(DiffusionEMD):
             N = Tj.shape[0]
             # If arank is not significantly smaller, don't bother shrinking basis
             if arank < min(N * 0.5, self.max_basis):
-                basis, P, perm = randomized_interpolative_decomposition(
-                    Tj, arank, min(arank + 8, N), return_p=True
-                )
+                basis, P, perm = randomized_interpolative_decomposition(Tj, arank, min(arank + 8, N), return_p = True)
                 Tp1 = Tj[basis]
             else:
                 P = None
@@ -289,6 +306,75 @@ class DiffusionTree(DiffusionEMD):
         self.embeddings = embeddings
         return self.embeddings
 
+class DiffusionTreeV2(DiffusionEMD):
+    def __init__(
+        self,
+        max_scale=10,
+        n_scales=6,
+        delta=0,
+        anisotropy=1,
+        alpha=0.5,
+        min_basis=0,
+        max_basis=None,
+    ):
+        n_scales = max_scale + 1
+        super().__init__(
+            max_scale=max_scale,
+            n_scales=n_scales,
+            delta=delta,
+            anisotropy=anisotropy,
+            alpha=alpha,
+            min_basis=min_basis,
+            max_basis=max_basis,
+        )
+
+    def fit(self, X):
+        super().fit(X)
+        self.T = apply_vectors(self.M, self.D ** -0.5)
+        self._compute_rank()
+        self._compute_diff_op()
+
+    def _compute_diff_op(self):
+        self.Ts = [self.T]
+        self.Ps = [None]
+        self.bases = [np.arange(self.N)]
+        for j, arank in enumerate(self.basis_sizes[1:]):
+            Tj = self.Ts[j]
+            N = Tj.shape[0]
+            # If arank is not significantly smaller, don't bother shrinking basis
+            if arank < min(N * 0.5, self.max_basis):
+                from scipy.linalg.interpolative import interp_decomp
+                basis, P = interp_decomp(Tj, arank)
+                Tp1 = Tj[basis[arank:]]
+            else:
+                P = None
+                basis = np.arange(N)
+                Tp1 = Tj
+            self.Ts.append(Tp1 @ Tp1.transpose())
+            self.Ps.append(P)
+            self.bases.append(basis)
+
+    def transform(self, y):
+        dist_at_scale = y
+        embeddings = []
+        n_scales = len(self.scales)
+        prev_diffusion = None
+        for i, s in enumerate(self.scales):
+            T = self.Ts[i]
+            P = self.Ps[i]
+            diffusion_at_scale = T @ dist_at_scale
+            tmp = diffusion_at_scale
+            if i > 0:
+                weight = 0.5 ** ((n_scales - i) * self.alpha) * (
+                    self.N / diffusion_at_scale.shape[0]
+                )
+                lvl_embed = weight * (tmp - prev_diffusion).T
+                embeddings.append(lvl_embed)
+            prev_diffusion = diffusion_at_scale
+        embeddings.append(tmp.T)
+        embeddings = np.concatenate(embeddings, axis=1)
+        self.embeddings = embeddings
+        return self.embeddings
 
 class DiffusionCheb(DiffusionEMD):
     def __init__(
@@ -345,11 +431,13 @@ class DiffusionCheb(DiffusionEMD):
         return embeddings
 
     def transform(self, y):
-        D_labels = (self.D[:, None] ** -0.5) * y
+        D_labels = (self.D[:, None] ** .5) * y
+        #D_labels = (self.D[:, None] ** -0.5) * y
         diffusions = self.filter.filter(
             D_labels, method=self.method, order=self.cheb_order
         )
-        diffusions = (self.D ** 0.5)[:, None, None] * diffusions
+        diffusions = (self.D ** -0.5)[:, None, None] * diffusions
+        #diffusions = (self.D ** 0.5)[:, None, None] * diffusions
         n, n_samples, n_scales = diffusions.shape
         embeddings = []
         for k in range(n_scales):
@@ -364,6 +452,92 @@ class DiffusionCheb(DiffusionEMD):
                 if k < n_scales - 1:
                     d -= diffusions[..., -1]
                 weight = 0.5 ** ((n_scales - k - 1) * self.alpha)
+            lvl_embed = weight * d.T
+            embeddings.append(lvl_embed)
+        if self.delta > 0:
+            self._compute_rank()
+            embeddings = self._subsample_embeddings(embeddings)
+        else:
+            self.basis_sizes = [n_samples] * n_scales
+        self.embeddings = np.concatenate(embeddings, axis=1)
+        return self.embeddings
+
+class DiffusionExact(DiffusionEMD):
+    def __init__(
+        self,
+        max_scale=10,
+        n_scales=6,
+        delta=0,
+        anisotropy=1,
+        alpha=0.5,
+        min_basis=0,
+        max_basis=None,
+        no_diff = False,
+        use_diff_wavelets=False,
+    ):
+        self.use_diff_wavelets = use_diff_wavelets
+        self.no_diff = no_diff
+        super().__init__(
+            max_scale=max_scale,
+            n_scales=n_scales,
+            delta=delta,
+            anisotropy=anisotropy,
+            alpha=alpha,
+            min_basis=min_basis,
+            max_basis=max_basis,
+        )
+        # Always include the zeroth scale for the exact computation
+        self.scales = [
+            0, *[2 ** i for i in range(max_scale - self.n_scales+1, max_scale + 1)
+        ]]
+
+    def fit(self, X):
+        super().fit(X + scipy.sparse.eye(X.shape[0]))
+        #self.T = self.T.todense()
+        
+        # compute basis
+        #if delta > 0:
+        #    self._compute_rank()
+        #    self._subsample_basis()
+
+
+    def _subsample_basis(self):
+        # TODO make this work on a concatenated set of embeddings
+        self.selections = [
+            randomized_interpolative_decomposition(self.M, rank, min(rank + 8, self.N))
+            if rank < min(self.max_basis, self.N)
+            else np.random.randint(self.N, size=rank)
+            for rank in self.basis_sizes
+        ]
+
+
+    def transform(self, y):
+        print(self.D[:, None].shape, y.shape)
+        print(type(self.D), type(y))
+        D_labels = (self.D[:, None] ** -0.5) * y
+        diffusions = [D_labels]
+        tmp = D_labels
+        print(self.scales)
+        for scale in range(1, max(self.scales)+1):
+            tmp = self.T @ tmp
+            if scale in self.scales:
+                diffusions.append(tmp)
+        diffusions = np.stack(diffusions, axis=-1)
+        diffusions = (self.D ** 0.5)[:, None, None] * diffusions
+        n, n_samples, n_scales = diffusions.shape
+        embeddings = []
+        for k in range(n_scales):
+            d = diffusions[..., k]
+            weight = 0.5 ** ((n_scales - k - 1) * self.alpha)
+            if not self.no_diff:
+                if self.use_diff_wavelets:
+                    # Corresponds to Dual norm version (1) in Leeb and Coifman 2016
+                    if k < n_scales - 1:
+                        d -= diffusions[..., k + 1]
+                else:
+                    # Corresponds to Dual norm version (2) in Leeb and Coifman 2016
+                    if k < n_scales - 1:
+                        d -= diffusions[..., -1]
             lvl_embed = weight * d.T
             embeddings.append(lvl_embed)
         if self.delta > 0:

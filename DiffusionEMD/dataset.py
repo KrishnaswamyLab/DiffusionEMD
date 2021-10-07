@@ -8,6 +8,7 @@ import numpy as np
 from scipy.stats import special_ortho_group
 import sklearn.datasets as skd
 import sklearn.metrics
+from sklearn.neighbors import kneighbors_graph
 import ot
 import pygsp
 
@@ -51,6 +52,24 @@ class Dataset(object):
         self.high_X = np.dot(self.X, self.rot_mat)
         return self.high_X
 
+class Ring(Dataset):
+    def __init__(self, n_points, random_state=42):
+        super().__init__()
+        self.n_points = n_points
+        N = n_points
+        self.random_state = random_state
+        np.random.seed(42)
+        self.X = np.linspace(0, 1 - (1 / N), N)[:, None]
+        self.X_circle = np.stack([np.cos(2 * np.pi * self.X[:,0]), np.sin(2 * np.pi * self.X[:,0])], axis=1)
+        # print(self.X_circle)
+        #self.graph = pygsp.graphs.NNGraph(
+        #    self.X_circle, epsilon=0.1, NNtype="radius", rescale=False, center=False
+        #)
+        self.graph = pygsp.graphs.Ring(self.n_points)
+        self.labels = np.eye(N)
+
+    def get_graph(self):
+        return self.graph
 
 class Line(Dataset):
     def __init__(self, n_points, random_state=42):
@@ -121,7 +140,6 @@ class SklearnDataset(Dataset):
             self.graph = graphtools.Graph(self.X, use_pygsp=True)
         return self.graph
 
-
 class SwissRoll(Dataset):
     def __init__(
         self,
@@ -169,3 +187,75 @@ class SwissRoll(Dataset):
         if self.graph is None:
             self.graph = graphtools.Graph(self.X, use_pygsp=True)
         return self.graph
+
+
+class Sphere(Dataset):
+    def __init__(
+        self,
+        n_distributions=100,
+        n_points_per_distribution=50,
+        dim = 3,
+        noise=0.05,
+        label_noise = 0.0,
+        manifold_noise=1.0,
+        width=1,
+        flip=False,
+        random_state=42,
+    ):
+        super().__init__()
+        self.n_distributions = n_distributions
+        self.n_points_per_distribution = n_points_per_distribution
+        self.dim = dim
+        self.noise = noise
+        self.manifold_noise = manifold_noise
+        rng = np.random.default_rng(random_state)
+
+        X = rng.normal(0, 1, (self.dim, self.n_distributions))
+        X = X / np.linalg.norm(X, axis=0)
+        self.means = X.T
+        X = X[:, :, None]
+        X = np.repeat(X, n_points_per_distribution, axis=-1)
+        noise = noise * rng.normal(size = (dim, n_distributions, n_points_per_distribution))
+        X += noise
+        X = X.reshape(dim, -1)
+        X = X / np.linalg.norm(X, axis=0)
+        #X += noise * rng.normal(size=(self.dim, n_distributions, n_points_per_distribution))
+
+        self.X = X.T
+        self.labels = np.repeat(
+            np.eye(n_distributions), n_points_per_distribution, axis=0
+        )
+        
+        # Flipping noise
+        if flip:
+            index_to_flip = np.random.randint(n_distributions * n_points_per_distribution, size = n_distributions)
+            for i in range(n_distributions):
+                self.labels[index_to_flip[i], i] = 1 - self.labels[index_to_flip[i], i]
+            self.labels = self.labels / np.sum(self.labels, axis=0)
+
+
+        # Ground truth dists (approximate) and clip for numerical errors
+        self.gtdists = np.arccos(np.clip(self.means @ self.means.T, 0, 1))
+
+    def get_graph(self):
+        """ Create a graphtools graph if does not exist
+        """
+        if self.graph is None:
+            #self.graph = graphtools.Graph(self.X, use_pygsp=True, knn=10)
+            self.graph = pygsp.graphs.NNGraph(
+                self.X, epsilon=0.1, NNtype="radius", rescale=False, center=False
+            )
+            #self.graph = graphtools.Graph(self.X, use_pygsp=True, knn=100)
+        return self.graph
+
+class Mnist(Dataset):
+    def __init__(self):
+        from torchvision.datasets import MNIST
+        self.mnist_train = MNIST("/home/atong/data/mnist/", download=True)
+        self.mnist_test = MNIST("/home/atong/data/mnist/", download=True, train=False)
+        self.graph = pygsp.graphs.Grid2d(28, 28)
+
+    def get_graph(self):
+        return self.graph
+
+
