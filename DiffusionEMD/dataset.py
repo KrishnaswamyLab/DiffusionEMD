@@ -9,6 +9,7 @@ from scipy.stats import special_ortho_group
 import sklearn.datasets as skd
 import sklearn.metrics
 from sklearn.neighbors import kneighbors_graph
+from sklearn.neighbors import radius_neighbors_graph
 import ot
 import pygsp
 
@@ -72,7 +73,7 @@ class Ring(Dataset):
         return self.graph
 
 class Line(Dataset):
-    def __init__(self, n_points, random_state=42):
+    def __init__(self, n_points, epsilon=0.1, random_state=42):
         super().__init__()
         self.n_points = n_points
         N = n_points
@@ -83,10 +84,18 @@ class Line(Dataset):
         #     [np.cos(2 * np.pi * self.X[:, 0]), np.sin(2 * np.pi * self.X[:, 0])],
         #     axis=1
         # )
-        self.graph = pygsp.graphs.NNGraph(
-            self.X, epsilon=0.1, NNtype="radius", rescale=False, center=False
-        )
+        self.graph = self.create_radius_graph(self.X, epsilon)
         self.labels = np.eye(N)
+
+    def create_radius_graph(self, X, epsilon):
+        """
+        Create a graph where each node is connected to all other nodes within a certain radius.
+        """
+        adjacency_matrix = radius_neighbors_graph(X, radius=epsilon, mode='connectivity', include_self=False)
+        
+        # Create the pygsp graph using the adjacency matrix
+        pygsp_graph = pygsp.graphs.Graph(adjacency_matrix)
+        return pygsp_graph
 
     def get_graph(self):
         return self.graph
