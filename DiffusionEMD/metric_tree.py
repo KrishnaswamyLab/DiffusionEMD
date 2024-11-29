@@ -10,7 +10,8 @@ adding points after the initial construction.
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_is_fitted
-from sklearn.neighbors import KDTree, BallTree, DistanceMetric
+from sklearn.metrics import DistanceMetric
+from sklearn.neighbors import KDTree, BallTree
 from sklearn.cluster import MiniBatchKMeans
 from scipy.sparse import coo_matrix
 
